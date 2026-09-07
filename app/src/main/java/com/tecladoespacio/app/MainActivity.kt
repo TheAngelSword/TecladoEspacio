@@ -26,7 +26,7 @@ class MainActivity : Activity() {
         }
         scroll.addView(box)
         box.addView(label("Teclado Espacio", 28f, true))
-        box.addView(label("Versión 2.0: teclas más grandes, sugerencias en español, emojis, stickers y respuesta táctil configurable.", 15f, false))
+        box.addView(label("Versión 3.0: diseño tipo Gboard sin botón de punto, símbolos reales, panel amplio de emojis, selector de GIF y dictado por voz.", 15f, false))
         box.addView(Button(this).apply { text = "Activar teclado en Android"; setOnClickListener { startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)) } }, lpTop(16))
         box.addView(Button(this).apply { text = "Elegir Teclado Espacio"; setOnClickListener { (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker() } }, lpTop(8))
         box.addView(label("Ajustes", 20f, true), lpTop(22))
@@ -36,7 +36,7 @@ class MainActivity : Activity() {
         val sizeTitle = label("Tamaño de teclas: ${KeyboardPrefs.keyHeightPercent(this)}%", 16f, true)
         box.addView(sizeTitle, lpTop(14))
         box.addView(SeekBar(this).apply { max = 35; progress = KeyboardPrefs.keyHeightPercent(this@MainActivity) - 100; setOnSeekBarChangeListener(object: SeekBar.OnSeekBarChangeListener { override fun onProgressChanged(s: SeekBar?, p: Int, fromUser: Boolean) { if (fromUser) { val value = 100 + p; KeyboardPrefs.setKeyHeightPercent(this@MainActivity, value); sizeTitle.text = "Tamaño de teclas: $value%" } }; override fun onStartTrackingTouch(s: SeekBar?) {}; override fun onStopTrackingTouch(s: SeekBar?) {} }) })
-        box.addView(label("Nota: cierra y vuelve a abrir el teclado para aplicar un cambio de tamaño. Los stickers de esta versión son respuestas rápidas de texto/emoji.", 14f, false), lpTop(18))
+        box.addView(label("GIF: el botón abre el selector de archivos de Android y puede insertar un GIF en aplicaciones compatibles. Voz: el micrófono usa el servicio de reconocimiento de voz instalado en el teléfono para dictar texto.", 14f, false), lpTop(18))
         setContentView(scroll)
     }
     private fun label(text: String, size: Float, bold: Boolean) = TextView(this).apply { this.text = text; textSize = size; setTextColor(Color.rgb(30,30,32)); if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD); gravity = Gravity.START; setPadding(0, dp(4), 0, dp(4)) }
