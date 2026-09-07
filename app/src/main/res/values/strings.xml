@@ -1,6 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Teclado Espacio</string>
-    <string name="subtype_es">Español</string>
-    <string name="space_label">Espacio</string>
-</resources>
+<resources><string name="app_name">Teclado Espacio</string><string name="subtype_es">Español (México)</string></resources>

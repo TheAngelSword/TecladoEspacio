@@ -3,28 +3,18 @@ package com.tecladoespacio.app
 import android.content.Context
 
 object KeyboardPrefs {
-    private const val PREFS_NAME = "teclado_espacio_prefs"
-    const val KEY_VIBRATION = "vibration_enabled"
-    const val KEY_SOUND = "sound_enabled"
-    const val KEY_AUTOCORRECT = "autocorrect_enabled"
-    const val KEY_KEY_HEIGHT = "key_height_percent"
-
-    private const val DEFAULT_VIBRATION = true
-    private const val DEFAULT_SOUND = true
-    private const val DEFAULT_AUTOCORRECT = true
-    private const val DEFAULT_KEY_HEIGHT = 116
-
-    fun prefs(context: Context) = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
-    fun vibrationEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_VIBRATION, DEFAULT_VIBRATION)
-
-    fun soundEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_SOUND, DEFAULT_SOUND)
-
-    fun autocorrectEnabled(context: Context): Boolean =
-        prefs(context).getBoolean(KEY_AUTOCORRECT, DEFAULT_AUTOCORRECT)
-
-    fun keyHeightPercent(context: Context): Int =
-        prefs(context).getInt(KEY_KEY_HEIGHT, DEFAULT_KEY_HEIGHT)
+    private const val NAME = "teclado_espacio"
+    private const val VIB = "vibration"
+    private const val SOUND = "sound"
+    private const val CORRECT = "autocorrect"
+    private const val SIZE = "size"
+    private fun p(c: Context) = c.getSharedPreferences(NAME, Context.MODE_PRIVATE)
+    fun vibrationEnabled(c: Context) = p(c).getBoolean(VIB, true)
+    fun soundEnabled(c: Context) = p(c).getBoolean(SOUND, true)
+    fun autocorrectEnabled(c: Context) = p(c).getBoolean(CORRECT, true)
+    fun keyHeightPercent(c: Context) = p(c).getInt(SIZE, 116)
+    fun setVibration(c: Context, v: Boolean) = p(c).edit().putBoolean(VIB, v).apply()
+    fun setSound(c: Context, v: Boolean) = p(c).edit().putBoolean(SOUND, v).apply()
+    fun setAutocorrect(c: Context, v: Boolean) = p(c).edit().putBoolean(CORRECT, v).apply()
+    fun setKeyHeightPercent(c: Context, v: Int) = p(c).edit().putInt(SIZE, v.coerceIn(100,135)).apply()
 }

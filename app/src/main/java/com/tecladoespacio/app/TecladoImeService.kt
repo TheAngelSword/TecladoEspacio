@@ -15,298 +15,65 @@ import android.text.InputType
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
-import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.PopupWindow
 import android.widget.TextView
 import kotlin.math.abs
 
 class TecladoImeService : InputMethodService() {
-    private var upper = false
-    private var symbols = false
+    private enum class Shift { OFF, ONCE, LOCK }
+    private var shift = Shift.OFF
     private lateinit var root: LinearLayout
-    private var suggestions: LinearLayout? = null
-
-    private val rows = listOf(
-        listOf("q","w","e","r","t","y","u","i","o","p"),
-        listOf("a","s","d","f","g","h","j","k","l","ñ"),
-        listOf("z","x","c","v","b","n","m")
-    )
-    private val symbolRows = listOf(
-        listOf("1","2","3","4","5","6","7","8","9","0"),
-        listOf("@","#","$","%","&","-","+","(",")","/"),
-        listOf("*","\"","'",":",";","!","?","_",".")
-    )
-    private val accents = mapOf(
-        "a" to listOf("á","à","ä","â"), "e" to listOf("é","è","ë","ê"),
-        "i" to listOf("í","ì","ï","î"), "o" to listOf("ó","ò","ö","ô"),
-        "u" to listOf("ú","ù","ü","û"), "n" to listOf("ñ")
-    )
-    private val emojis = listOf("😀","😂","😍","🥳","😎","😉","😊","😭","😡","🙏","👍","👏","🙌","🔥","❤️","💙","🎉","✨")
-    private val stickers = listOf("¡Excelente!","¡Felicidades!","¡Gracias!","¡Buen trabajo!","¡Ánimo!","¡Listo!","¯\\_(ツ)_/¯","(づ｡◕‿‿◕｡)づ","❤️🔥","🎉🥳")
+    private lateinit var suggestions: LinearLayout
+    private val rows = listOf(listOf("q","w","e","r","t","y","u","i","o","p"), listOf("a","s","d","f","g","h","j","k","l","ñ"), listOf("z","x","c","v","b","n","m"))
+    private val emojis = listOf("😀","😂","😍","🥳","😎","😉","😊","😭","🙏","👍","👏","🔥","❤️","🎉","✨")
+    private val stickers = listOf("¡Excelente!","¡Felicidades!","¡Gracias!","¡Buen trabajo!","¡Ánimo!","¡Listo!","❤️🔥","🎉🥳")
 
     override fun onCreateInputView(): View {
-        root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.rgb(228,228,230))
-            setPadding(dp(5), dp(4), dp(5), dp(7))
-        }
-        buildKeyboard()
-        return root
+        root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(4),dp(4),dp(4),dp(8)); setBackgroundColor(Color.rgb(228,228,230)) }
+        buildKeyboard(); return root
     }
-
-    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
-        super.onStartInputView(info, restarting)
-        if (!restarting) {
-            symbols = false
-            upper = shouldCap(info)
-            if (::root.isInitialized) buildKeyboard()
-        }
-    }
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) { super.onStartInputView(info,restarting); shift = if (shouldCap(info)) Shift.ONCE else Shift.OFF; if (::root.isInitialized) buildKeyboard() }
 
     private fun buildKeyboard() {
-        root.removeAllViews()
-        addToolbar()
-        addSuggestions()
-        if (symbols) addSymbols() else addLetters()
-        refreshSuggestions()
+        root.removeAllViews(); addToolbar()
+        suggestions = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(38)) }
+        root.addView(suggestions); addLetterRow(rows[0]); addLetterRow(rows[1]); addShiftRow(); addBottomRow(); updateSuggestions()
     }
-
     private fun addToolbar() {
-        val bar = row(40)
-        toolbarButton(bar, "😊") { showPicker(it, emojis, false) }
-        toolbarButton(bar, "GIF") { commit("GIF ") }
-        toolbarButton(bar, "✦") { showPicker(it, stickers, true) }
-        toolbarButton(bar, "📋") { showKeyboardPicker() }
-        toolbarButton(bar, "⚙") { openSettings() }
-        toolbarButton(bar, "🎤") { showKeyboardPicker() }
-        root.addView(bar)
+        val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,dp(40)) }
+        listOf("😊","GIF","✦","⚙","🎤").forEach { item ->
+            bar.addView(TextView(this).apply { text=item; gravity=Gravity.CENTER; textSize=if(item=="GIF")13f else 18f; setTextColor(Color.BLACK); typeface=Typeface.DEFAULT_BOLD; layoutParams=LinearLayout.LayoutParams(0,ViewGroup.LayoutParams.MATCH_PARENT,1f); setOnClickListener { feedback(); when(item){ "😊"->showPopup(this,emojis); "✦"->showPopup(this,stickers); "⚙"->startActivity(Intent(this@TecladoImeService,MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } } })
+        }; root.addView(bar)
     }
-
-    private fun toolbarButton(parent: LinearLayout, label: String, action: (View) -> Unit) {
-        parent.addView(TextView(this).apply {
-            text = label; gravity = Gravity.CENTER; textSize = if (label == "GIF") 13f else 18f
-            setTextColor(Color.BLACK); typeface = Typeface.DEFAULT_BOLD
-            layoutParams = LinearLayout.LayoutParams(0, dp(40), 1f)
-            setOnClickListener { feedback(); action(this) }
-        })
+    private fun addLetterRow(keys: List<String>) { val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}; keys.forEach{row.addView(key(it,1f){commit(display(it))})}; root.addView(row) }
+    private fun addShiftRow() {
+        val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+        row.addView(key(if(shift==Shift.LOCK)"⇪" else "⇧",1.35f,{ shift=when(shift){Shift.OFF->Shift.ONCE;Shift.ONCE->Shift.LOCK;Shift.LOCK->Shift.OFF};buildKeyboard() },true))
+        rows[2].forEach{row.addView(key(it,1f){commit(display(it))})}; row.addView(key("⌫",1.35f,{backspace()},true)); root.addView(row)
     }
-
-    private fun addSuggestions() {
-        suggestions = row(38).also { root.addView(it) }
+    private fun addBottomRow() {
+        val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL}
+        row.addView(key("?123",1.1f,{commit("123")},true)); row.addView(key(",",.8f,{punctuation(",")})); row.addView(key("😊",.95f,{showPopup(root,emojis)},true)); row.addView(key("Espacio",3.8f,{punctuation(" ")})); row.addView(key(".",.75f,{punctuation(".")})); row.addView(key("↵",1.5f,{enter()},true)); root.addView(row)
     }
-
-    private fun addLetters() {
-        addKeyRow(rows[0]); addKeyRow(rows[1])
-        val third = row(keyHeight())
-        addAction(third, if (upper) "⇪" else "⇧", 1.35f) { upper = !upper; buildKeyboard() }
-        rows[2].forEach { addKey(third, it, 1f) }
-        addAction(third, "⌫", 1.35f) { backspace() }
-        root.addView(third)
-        addBottom()
+    private fun key(text:String,weight:Float,click:()->Unit,action:Boolean=false):View=TextView(this).apply{
+        this.text=text; gravity=Gravity.CENTER; textSize=if(text.length>2)15f else 20f; setTextColor(Color.rgb(28,28,30)); typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL); background=bg(if(action)Color.rgb(212,214,240) else Color.WHITE)
+        layoutParams=LinearLayout.LayoutParams(0,dp((48*KeyboardPrefs.keyHeightPercent(this@TecladoImeService)/100f).toInt()),weight).apply{setMargins(dp(2),dp(3),dp(2),dp(3))}; setOnClickListener{feedback();click()}
     }
-
-    private fun addSymbols() {
-        addKeyRow(symbolRows[0]); addKeyRow(symbolRows[1]); addKeyRow(symbolRows[2])
-        addBottom()
-    }
-
-    private fun addKeyRow(keys: List<String>) {
-        val r = row(keyHeight())
-        keys.forEach { addKey(r, it, 1f) }
-        root.addView(r)
-    }
-
-    private fun addBottom() {
-        val r = row(keyHeight())
-        addAction(r, if (symbols) "ABC" else "?123", 1.05f) { symbols = !symbols; buildKeyboard() }
-        addKey(r, ",", .72f)
-        addAction(r, "😊", .9f) { showPicker(it, emojis, false) }
-        addAction(r, "✦", .82f) { showPicker(it, stickers, true) }
-        addAction(r, "Espacio", 3.2f) { acceptSuggestion(" ") }
-        addKey(r, ".", .72f)
-        addAction(r, "↵", 1.25f) { enter() }
-        root.addView(r)
-    }
-
-    private fun addKey(parent: LinearLayout, raw: String, weight: Float) {
-        val shown = if (!symbols && upper && raw.length == 1 && raw[0].isLetter()) raw.uppercase() else raw
-        val v = TextView(this).apply {
-            text = shown; gravity = Gravity.CENTER; textSize = 20f; setTextColor(Color.rgb(28,28,30))
-            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            background = bg(Color.WHITE)
-            layoutParams = LinearLayout.LayoutParams(0, keyHeight(), weight).apply { setMargins(dp(2),dp(3),dp(2),dp(3)) }
-            setOnClickListener { feedback(); typeKey(shown) }
-        }
-        if (!symbols) {
-            v.setOnLongClickListener {
-                accents[raw.lowercase()]?.let { list -> showPicker(v, list, false); true } ?: false
-            }
-        }
-        parent.addView(v)
-    }
-
-    private fun addAction(parent: LinearLayout, label: String, weight: Float, action: (View) -> Unit) {
-        parent.addView(TextView(this).apply {
-            text = label; gravity = Gravity.CENTER; textSize = if (label.length > 3) 14f else 18f
-            setTextColor(Color.rgb(28,28,30)); typeface = Typeface.DEFAULT_BOLD
-            background = bg(Color.rgb(210,212,232))
-            layoutParams = LinearLayout.LayoutParams(0, keyHeight(), weight).apply { setMargins(dp(2),dp(3),dp(2),dp(3)) }
-            setOnClickListener { feedback(); action(this) }
-        })
-    }
-
-    private fun typeKey(text: String) {
-        if (text in listOf(".",",","!","?")) acceptSuggestion(text) else commit(text)
-        if (!symbols && upper && text.length == 1 && text[0].isLetter()) {
-            upper = false
-            buildKeyboard()
-        } else refreshSuggestions()
-    }
-
-    private fun commit(text: String) {
-        currentInputConnection?.commitText(text, 1)
-        refreshSuggestions()
-    }
-
-    private fun backspace() {
-        val ic = currentInputConnection ?: return
-        if (!ic.getSelectedText(0).isNullOrEmpty()) ic.commitText("",1) else ic.deleteSurroundingText(1,0)
-        refreshSuggestions()
-    }
-
-    private fun enter() {
-        if (KeyboardPrefs.autocorrectEnabled(this)) replaceWithBest()
-        val ic = currentInputConnection ?: return
-        val info = currentInputEditorInfo
-        val action = info.imeOptions and EditorInfo.IME_MASK_ACTION
-        if (action != EditorInfo.IME_ACTION_NONE && action != EditorInfo.IME_ACTION_UNSPECIFIED) ic.performEditorAction(action)
-        else {
-            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-            ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER))
-        }
-        upper = true
-        refreshSuggestions()
-    }
-
-    private fun acceptSuggestion(trailing: String) {
-        if (KeyboardPrefs.autocorrectEnabled(this)) replaceWithBest()
-        currentInputConnection?.commitText(trailing, 1)
-        if (trailing == " " || trailing == "." || trailing == "!" || trailing == "?") upper = true
-        refreshSuggestions()
-    }
-
-    private fun refreshSuggestions() {
-        val strip = suggestions ?: return
-        strip.removeAllViews()
-        if (symbols || !KeyboardPrefs.autocorrectEnabled(this)) return
-        val list = findSuggestions()
-        list.take(3).forEach { word ->
-            strip.addView(TextView(this).apply {
-                text = word; gravity = Gravity.CENTER; textSize = 15f; setTextColor(Color.BLACK); background = bg(Color.WHITE)
-                layoutParams = LinearLayout.LayoutParams(0, dp(34), 1f).apply { setMargins(dp(2),dp(2),dp(2),dp(2)) }
-                setOnClickListener { feedback(); replaceCurrentWord(word); refreshSuggestions() }
-            })
-        }
-    }
-
-    private fun findSuggestions(): List<String> {
-        val word = currentWord().lowercase()
-        if (word.length < 2) return emptyList()
-        val n = normalize(word)
-        val prefix = SpanishDictionary.words.filter { normalize(it).startsWith(n) }.sortedBy { it.length }.take(3).toMutableList()
-        if (prefix.none { normalize(it) == n }) {
-            SpanishDictionary.words.asSequence()
-                .filter { abs(it.length - word.length) <= 2 }
-                .map { it to distance(n, normalize(it)) }
-                .filter { it.second <= 2 }
-                .sortedWith(compareBy<Pair<String,Int>> { it.second }.thenBy { it.first.length })
-                .firstOrNull()?.first?.let { if (it !in prefix) prefix.add(0,it) }
-        }
-        return prefix.distinct().take(3)
-    }
-
-    private fun replaceWithBest() {
-        val old = currentWord()
-        if (old.length < 2) return
-        val best = findSuggestions().firstOrNull() ?: return
-        val d = distance(normalize(old.lowercase()), normalize(best.lowercase()))
-        if (d in 0..2 && !old.equals(best, true)) replaceCurrentWord(best)
-    }
-
-    private fun replaceCurrentWord(word: String) {
-        val ic = currentInputConnection ?: return
-        val old = currentWord()
-        if (old.isEmpty()) return
-        ic.deleteSurroundingText(old.length,0)
-        ic.commitText(word,1)
-    }
-
-    private fun currentWord(): String {
-        val text = currentInputConnection?.getTextBeforeCursor(80,0)?.toString().orEmpty()
-        return text.takeLastWhile { it.isLetter() }
-    }
-
-    private fun normalize(s: String) = s.lowercase()
-        .replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u").replace("ü","u").replace("ñ","n")
-
-    private fun distance(a: String, b: String): Int {
-        val c = IntArray(b.length + 1) { it }
-        for (i in 1..a.length) {
-            var prev = i - 1; c[0] = i
-            for (j in 1..b.length) {
-                val old = c[j]
-                c[j] = minOf(c[j] + 1, c[j-1] + 1, prev + if (a[i-1] == b[j-1]) 0 else 1)
-                prev = old
-            }
-        }
-        return c[b.length]
-    }
-
-    private fun showPicker(anchor: View, items: List<String>, addSpace: Boolean) {
-        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8),dp(8),dp(8),dp(8)); background = bg(Color.WHITE) }
-        lateinit var popup: PopupWindow
-        items.chunked(4).forEach { line ->
-            val r = LinearLayout(this)
-            line.forEach { item ->
-                r.addView(TextView(this).apply {
-                    text = item; gravity = Gravity.CENTER; textSize = if (item.length <= 2) 22f else 14f; setTextColor(Color.BLACK)
-                    setPadding(dp(10),dp(9),dp(10),dp(9))
-                    setOnClickListener { feedback(); commit(if (addSpace) "$item " else item); popup.dismiss() }
-                })
-            }
-            box.addView(r)
-        }
-        popup = PopupWindow(box, LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, true).apply {
-            elevation = dp(12).toFloat(); isOutsideTouchable = true
-        }
-        popup.showAsDropDown(anchor, 0, -dp(260))
-    }
-
-    private fun feedback() {
-        if (KeyboardPrefs.vibrationEnabled(this)) {
-            try {
-                val vib = if (Build.VERSION.SDK_INT >= 31) (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator else @Suppress("DEPRECATION") (getSystemService(Context.VIBRATOR_SERVICE) as Vibrator)
-                if (Build.VERSION.SDK_INT >= 26) vib.vibrate(VibrationEffect.createOneShot(10, VibrationEffect.DEFAULT_AMPLITUDE)) else @Suppress("DEPRECATION") vib.vibrate(10)
-            } catch (_: Exception) {}
-        }
-        if (KeyboardPrefs.soundEnabled(this)) {
-            try { (getSystemService(Context.AUDIO_SERVICE) as AudioManager).playSoundEffect(AudioManager.FX_KEY_CLICK, 0.25f) } catch (_: Exception) {}
-        }
-    }
-
-    private fun shouldCap(info: EditorInfo?): Boolean {
-        if (info == null) return true
-        if ((info.inputType and InputType.TYPE_MASK_CLASS) != InputType.TYPE_CLASS_TEXT) return false
-        val f = info.inputType and InputType.TYPE_MASK_FLAGS
-        return f and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES != 0 || f and InputType.TYPE_TEXT_FLAG_CAP_WORDS != 0 || f and InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS != 0
-    }
-
-    private fun openSettings() = startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    private fun showKeyboardPicker() = (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showInputMethodPicker()
-    private fun row(height: Int) = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(height)) }
-    private fun keyHeight(): Int = (48f * KeyboardPrefs.keyHeightPercent(this) / 100f).toInt()
-    private fun bg(color: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(8).toFloat() }
-    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
+    private fun commit(text:String){currentInputConnection?.commitText(text,1); if(text.length==1&&text[0].isLetter()&&shift==Shift.ONCE){shift=Shift.OFF;buildKeyboard()}else updateSuggestions()}
+    private fun punctuation(p:String){if(KeyboardPrefs.autocorrectEnabled(this))applyCorrection();currentInputConnection?.commitText(p,1);if(p==" "||p=="."||p=="!"||p=="?"){shift=Shift.ONCE;buildKeyboard()}else updateSuggestions()}
+    private fun backspace(){currentInputConnection?.deleteSurroundingText(1,0);updateSuggestions()}
+    private fun enter(){if(KeyboardPrefs.autocorrectEnabled(this))applyCorrection();val ic=currentInputConnection?:return;val a=currentInputEditorInfo.imeOptions and EditorInfo.IME_MASK_ACTION;if(a!=EditorInfo.IME_ACTION_NONE&&a!=EditorInfo.IME_ACTION_UNSPECIFIED)ic.performEditorAction(a)else{ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_ENTER));ic.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_ENTER))}}
+    private fun updateSuggestions(){if(!::suggestions.isInitialized)return;suggestions.removeAllViews();if(!KeyboardPrefs.autocorrectEnabled(this))return;val w=currentWord().lowercase();if(w.length<2)return;suggest(w).take(3).forEach{s->suggestions.addView(TextView(this).apply{text=s;gravity=Gravity.CENTER;textSize=15f;setTextColor(Color.BLACK);background=bg(Color.WHITE);layoutParams=LinearLayout.LayoutParams(0,dp(34),1f).apply{setMargins(dp(2),dp(2),dp(2),dp(2))};setOnClickListener{feedback();replaceWord(s);updateSuggestions()}})}}
+    private fun suggest(word:String):List<String>{val n=norm(word);val p=SpanishDictionary.words.filter{norm(it).startsWith(n)}.sortedBy{it.length}.take(3).toMutableList();val c=SpanishDictionary.words.asSequence().filter{abs(it.length-word.length)<=2}.map{it to distance(n,norm(it))}.filter{it.second<=2}.sortedWith(compareBy<Pair<String,Int>>{it.second}.thenBy{it.first.length}).map{it.first}.firstOrNull();if(c!=null&&c!in p)p.add(0,c);return p.distinct()}
+    private fun applyCorrection(){val w=currentWord();if(w.length<2)return;val b=suggest(w.lowercase()).firstOrNull()?:return;val d=distance(norm(w.lowercase()),norm(b));if(d in 1..2||(d==0&&w.lowercase()!=b.lowercase()))replaceWord(b)}
+    private fun replaceWord(new:String){val old=currentWord();if(old.isEmpty())return;currentInputConnection?.deleteSurroundingText(old.length,0);currentInputConnection?.commitText(new,1)}
+    private fun currentWord():String{val t=currentInputConnection?.getTextBeforeCursor(60,0)?.toString().orEmpty();return t.takeLastWhile{it.isLetter()||it in "áéíóúüñÁÉÍÓÚÜÑ"}}
+    private fun showPopup(anchor:View,items:List<String>){val outer=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(8),dp(8),dp(8),dp(8));background=bg(Color.WHITE)};lateinit var pop:PopupWindow;items.chunked(4).forEach{chunk->val row=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL};chunk.forEach{item->row.addView(TextView(this).apply{text=item;gravity=Gravity.CENTER;textSize=if(item.length<=2)22f else 15f;setPadding(dp(12),dp(10),dp(12),dp(10));setTextColor(Color.BLACK);setOnClickListener{feedback();currentInputConnection?.commitText(item,1);pop.dismiss();updateSuggestions()}})};outer.addView(row)};pop=PopupWindow(outer,ViewGroup.LayoutParams.WRAP_CONTENT,ViewGroup.LayoutParams.WRAP_CONTENT,true).apply{elevation=dp(10).toFloat();isOutsideTouchable=true};pop.showAsDropDown(anchor,0,-dp(220))}
+    private fun feedback(){if(KeyboardPrefs.vibrationEnabled(this)){try{val v=if(Build.VERSION.SDK_INT>=31)(getSystemService(Context.VIBRATOR_MANAGER_SERVICE)as VibratorManager).defaultVibrator else @Suppress("DEPRECATION")(getSystemService(Context.VIBRATOR_SERVICE)as Vibrator);if(Build.VERSION.SDK_INT>=26)v.vibrate(VibrationEffect.createOneShot(10,VibrationEffect.DEFAULT_AMPLITUDE))}catch(_:Exception){}};if(KeyboardPrefs.soundEnabled(this)){try{(getSystemService(Context.AUDIO_SERVICE)as AudioManager).playSoundEffect(AudioManager.FX_KEY_CLICK,0.35f)}catch(_:Exception){}}}
+    private fun shouldCap(info:EditorInfo?):Boolean{if(info==null)return true;if((info.inputType and InputType.TYPE_MASK_CLASS)!=InputType.TYPE_CLASS_TEXT)return false;val f=info.inputType and InputType.TYPE_MASK_FLAGS;return(f and InputType.TYPE_TEXT_FLAG_CAP_SENTENCES)!=0||(f and InputType.TYPE_TEXT_FLAG_CAP_WORDS)!=0}
+    private fun display(s:String)=if(shift==Shift.OFF)s else s.uppercase();private fun bg(c:Int)=GradientDrawable().apply{setColor(c);cornerRadius=dp(8).toFloat()};private fun dp(v:Int)=(v*resources.displayMetrics.density).toInt();private fun norm(s:String)=s.lowercase().replace('á','a').replace('é','e').replace('í','i').replace('ó','o').replace('ú','u').replace('ü','u').replace('ñ','n')
+    private fun distance(a:String,b:String):Int{val d=Array(a.length+1){IntArray(b.length+1)};for(i in 0..a.length)d[i][0]=i;for(j in 0..b.length)d[0][j]=j;for(i in 1..a.length)for(j in 1..b.length)d[i][j]=minOf(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+if(a[i-1]==b[j-1])0 else 1);return d[a.length][b.length]}
 }

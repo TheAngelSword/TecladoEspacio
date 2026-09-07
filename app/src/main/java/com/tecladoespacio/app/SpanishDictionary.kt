@@ -1,42 +1,5 @@
 package com.tecladoespacio.app
 
 object SpanishDictionary {
-    val words = listOf(
-        "a", "acá", "acción", "aceptar", "acompañar", "actual", "adiós", "ahí", "ahora", "algo",
-        "alguna", "alguno", "alguien", "algún", "allá", "allí", "almuerzo", "amiga", "amigo", "amor",
-        "anoche", "antes", "aquí", "archivo", "así", "aunque", "aún", "ayer", "ayuda", "azul",
-        "bajar", "banco", "bar", "bastante", "bebida", "bien", "blanco", "bonito", "borrar", "buscar",
-        "caballero", "cabeza", "café", "calle", "cama", "cambiar", "camino", "campo", "canción", "cantidad",
-        "cariño", "carta", "casa", "casi", "celular", "centro", "cerca", "cerrar", "charla", "chica",
-        "chico", "cierto", "cinco", "claro", "clase", "cliente", "comenzar", "comer", "comida", "como",
-        "comprar", "con", "conocer", "consulta", "contigo", "contra", "correo", "correr", "cosa", "creo",
-        "cuaderno", "cuando", "cuarto", "cuatro", "cuenta", "cuerpo", "cumpleaños", "dar", "dato", "de",
-        "debajo", "decir", "dejar", "demasiado", "dentro", "derecho", "desayuno", "después", "día", "diario",
-        "dice", "dinero", "dios", "dirección", "disculpa", "documento", "donde", "dos", "duda", "dulce",
-        "el", "ella", "ellas", "ellos", "embarazo", "empresa", "en", "encender", "encontrar", "entonces",
-        "entrada", "equipo", "eres", "es", "esa", "ese", "eso", "escribir", "escuchar", "espacio",
-        "español", "esta", "estado", "estar", "este", "esto", "estoy", "estudiante", "etiqueta", "evento",
-        "excelente", "favor", "fecha", "feliz", "fin", "fondo", "forma", "foto", "frase", "frío",
-        "fuego", "fuera", "funciona", "gente", "gracias", "grande", "grupo", "guardar", "gusta", "haber",
-        "habitación", "hablar", "hace", "hacer", "hasta", "hay", "hermana", "hermano", "hija", "hijo",
-        "historia", "hola", "hora", "hoy", "igual", "imagen", "importante", "iniciar", "instalar", "ir",
-        "izquierda", "jefe", "jugar", "julio", "junio", "junto", "lado", "le", "leer", "lindo",
-        "lista", "llamada", "llegar", "llevar", "lleno", "lluvia", "lo", "lugar", "lunes", "luz",
-        "madre", "mal", "mamá", "mañana", "mano", "mapa", "mar", "martes", "más", "me",
-        "mensaje", "mesa", "mi", "miércoles", "mientras", "mío", "mirar", "mis", "mismo", "modo",
-        "momento", "mucha", "muchas", "mucho", "mujer", "mundo", "música", "muy", "nada", "nadie",
-        "necesito", "negro", "ni", "niña", "niño", "no", "noche", "nombre", "nos", "nosotros",
-        "nuestra", "nuestro", "nueva", "nuevo", "nunca", "o", "ocho", "oficina", "ok", "otra",
-        "otro", "papá", "para", "parece", "parte", "pasar", "pedido", "pensar", "pequeño", "pero",
-        "persona", "poco", "poder", "poner", "porque", "pregunta", "primero", "problema", "próximo", "puede",
-        "puedo", "pues", "punto", "qué", "quedar", "querer", "quién", "rápido", "real", "recibir",
-        "recordar", "regresar", "reunión", "revisar", "rojo", "saber", "salir", "saludo", "sábado", "se",
-        "seguir", "segundo", "seguro", "seis", "semana", "señor", "señora", "ser", "servicio", "si",
-        "sí", "siempre", "siete", "sitio", "sobre", "solo", "solución", "soy", "su", "subir",
-        "suerte", "super", "tal", "también", "tarde", "te", "teclado", "teléfono", "tema", "tener",
-        "texto", "ti", "tiempo", "tienda", "tiene", "tipo", "tocar", "todo", "trabajo", "traer",
-        "tres", "tu", "tú", "último", "una", "uno", "usar", "usuario", "usted", "va",
-        "vale", "vamos", "ver", "verdad", "vez", "viernes", "vida", "video", "viene", "virtual",
-        "volver", "voy", "wifi", "ya", "yo", "zona", "árbol", "éxito", "última"
-    )
+    val words = listOf("ahora","algo","alguien","amiga","amigo","amor","antes","aquí","archivo","ayuda","bien","buscar","cambiar","casa","celular","claro","clase","comer","comida","como","comprar","con","conocer","correo","cosa","cuando","cuenta","decir","dejar","derecho","después","día","dinero","documento","donde","ella","ellos","empresa","entonces","entrada","equipo","escribir","español","estar","esto","estoy","evento","favor","fecha","feliz","forma","foto","gracias","grande","grupo","guardar","gusta","haber","hablar","hacer","hasta","hay","hija","hijo","hola","hora","hoy","imagen","importante","instalar","jugar","leer","lista","llamada","llegar","llevar","lugar","mañana","más","mensaje","mientras","mirar","mismo","momento","muchas","mucho","mujer","mundo","música","nada","necesito","noche","nombre","nosotros","nuevo","nunca","otra","otro","para","parte","pasar","pensar","pero","persona","poder","poner","porque","pregunta","primero","problema","puede","puedo","pues","qué","quedar","querer","quién","rápido","recibir","recordar","regresar","reunión","revisar","saber","salir","saludo","seguro","semana","señor","señora","si","sí","siempre","sitio","sobre","solo","solución","también","tarde","teclado","teléfono","tema","tener","texto","tiempo","tiene","todo","trabajo","último","una","usar","usuario","usted","vale","vamos","verdad","viernes","video","viene","volver","voy","wifi","ya","yo")
 }
