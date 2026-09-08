@@ -1,0 +1,97 @@
+name: Build AnySoftKeyboard without period
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build-anysoftkeyboard-no-period.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: AnySoftKeyboard Sin Punto
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Clone pinned AnySoftKeyboard
+        run: |
+          git clone https://github.com/AnySoftKeyboard/AnySoftKeyboard.git src
+          cd src
+          git checkout 6bf9ae6e2375364d7f19d54687a1b6067c8b0a13
+          git submodule update --init --recursive
+      - name: Remove direct period keys and enlarge Space
+        working-directory: src
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          files=list(Path('ime/app/src/main/res').glob('xml*/ext_kbd_bottom_row*.xml'))
+          changed=0
+          for p in files:
+              s=p.read_text()
+              s,n=re.subn(r'\s*<Key\b(?=[^>]*android:codes="46")(?=[^>]*android:keyLabel="\.")[^>]*/>', '', s, flags=re.S)
+              if n:
+                  s=s.replace('android:codes="@integer/key_code_space" android:keyWidth="30%p"',
+                              'android:codes="@integer/key_code_space" android:keyWidth="40%p"')
+                  p.write_text(s)
+                  changed += n
+          if changed < 1:
+              raise SystemExit('Expected AnySoftKeyboard period key not found')
+          print('Removed direct period keys:', changed)
+          PY
+          git diff --check
+          git diff > ../AnySoftKeyboard-SinPunto.patch
+      - name: Source privacy audit
+        working-directory: src
+        run: |
+          {
+            echo 'PROJECT=AnySoftKeyboard'
+            echo 'UPSTREAM=https://github.com/AnySoftKeyboard/AnySoftKeyboard'
+            echo 'PINNED_SHA=6bf9ae6e2375364d7f19d54687a1b6067c8b0a13'
+            echo 'MODIFICATION=Removed direct period key(s) from bottom-row XML and enlarged Space to occupy the removed width.'
+            echo
+            echo '=== Source declarations of INTERNET permission ==='
+            grep -RIn --exclude-dir=.git 'android.permission.INTERNET' ime api 2>/dev/null | head -50 || true
+            echo
+            echo '=== Network/telemetry keyword review (informational) ==='
+            grep -RInE --exclude-dir=.git --exclude='*.lock' --exclude='*.md' 'FirebaseAnalytics|Crashlytics|Sentry|Amplitude|Mixpanel|HttpURLConnection|URLConnection|OkHttp|Retrofit' ime api 2>/dev/null | head -100 || true
+          } > ../AnySoftKeyboard-privacy-audit.txt
+      - name: Build APK
+        working-directory: src
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :ime:app:assembleDebug
+      - name: Verify final APK has NO Internet permission
+        run: |
+          APK=$(find src/ime/app/build/outputs/apk -name '*.apk' | head -1)
+          test -n "$APK"
+          APKA=$(find "$ANDROID_HOME/cmdline-tools" -type f -name apkanalyzer | head -1)
+          test -x "$APKA"
+          "$APKA" manifest permissions "$APK" | tee AnySoftKeyboard-final-permissions.txt
+          if grep -Fq 'android.permission.INTERNET' AnySoftKeyboard-final-permissions.txt; then
+            echo 'FAIL: final APK requests INTERNET permission.' >&2
+            exit 1
+          fi
+          cat AnySoftKeyboard-final-permissions.txt >> AnySoftKeyboard-privacy-audit.txt
+          cp "$APK" AnySoftKeyboard-SinPunto-UNOFFICIAL.apk
+          sha256sum AnySoftKeyboard-SinPunto-UNOFFICIAL.apk | tee -a AnySoftKeyboard-privacy-audit.txt
+      - name: Preserve license
+        run: cp src/LICENSE AnySoftKeyboard-LICENSE.txt
+      - name: Upload test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: AnySoftKeyboard-SinPunto-UNOFFICIAL
+          path: |
+            AnySoftKeyboard-SinPunto-UNOFFICIAL.apk
+            AnySoftKeyboard-privacy-audit.txt
+            AnySoftKeyboard-SinPunto.patch
+            AnySoftKeyboard-LICENSE.txt
